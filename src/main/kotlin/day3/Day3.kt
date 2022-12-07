@@ -29,13 +29,13 @@ fun day32(): Int = parseInputToMap { File("src/main/kotlin/day3/Day3.txt").readT
     .chunked(3)
     .map {
         it[0].toSet() intersect it[1].toSet() intersect it[2].toSet()
-    }.map { itemList ->
+    }.sumOf { itemList ->
         itemList.sumOf { item ->
             val lowerSum = prioritiesMapLower.getOrDefault(item.toString(), 0)
             val upperSum = prioritiesMapUpper.getOrDefault(item.toString(), 0)
             lowerSum + upperSum
         }
-    }.sum()
+    }
 
 
 fun main() {
