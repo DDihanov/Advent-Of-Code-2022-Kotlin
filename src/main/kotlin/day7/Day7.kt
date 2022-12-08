@@ -108,7 +108,7 @@ fun day72(): Int {
     return root.accumulateDirs()
         .map { it.name to it.calcSize() }
         .filter { it.second >= neededSpace }
-        .minByOrNull { neededSpace }!!
+        .minByOrNull { it.second }!!
         .second
 }
 
