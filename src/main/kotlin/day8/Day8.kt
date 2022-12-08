@@ -4,7 +4,7 @@ import java.io.File
 
 val input = File("src/main/kotlin/day8/Day8.txt")
 fun parseMatrix(input: () -> String, lineLength: Int) = input()
-    // input has line breaks /r and will crash the parser so digitToIntOrNull needed
+    // input has carriage returns \r and will crash the parser so digitToIntOrNull needed
     .mapNotNull { it.digitToIntOrNull() }
     .toArrayOfIntArrays(lineLength)
 
