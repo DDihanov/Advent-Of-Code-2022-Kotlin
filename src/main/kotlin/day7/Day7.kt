@@ -102,6 +102,7 @@ fun day71() = root
 
 const val TOTAL_SIZE = 70_000_000
 const val NEEDED_SIZE = 30_000_000
+
 fun day72(): Int {
     val neededSpace = NEEDED_SIZE - (TOTAL_SIZE - root.calcSize())
     return root.accumulateDirs()
