@@ -1,0 +1,88 @@
+package day8
+
+import java.io.File
+
+val input = File("src/main/kotlin/day8/Day8.txt")
+fun parseMatrix(input: () -> String, lineLength: Int) = input()
+    // input has line breaks /r and will crash the parser so digitToIntOrNull needed
+    .mapNotNull { it.digitToIntOrNull() }
+    .toArrayOfIntArrays(lineLength)
+
+val matrix = parseMatrix(
+    input = {
+        input.readText()
+    },
+    // any element will do as input is always rectangular
+    lineLength = input.readLines().first().count()
+)
+
+fun day81(): Int {
+    var numVisible = 0
+    for (row in matrix.indices) {
+        for (col in 0 until matrix[row].size) {
+            if (matrix.checkIfVisible(row, col)) numVisible++
+        }
+    }
+
+    return numVisible
+}
+
+fun main() {
+    println(day81())
+}
+
+fun Array<IntArray>.checkIfVisible(row: Int, col: Int) =
+    checkIfVisibleUp(row, col) ||
+            checkIfVisibleDown(row, col) ||
+            checkIfVisibleLeft(row, col) ||
+            checkIfVisibleRight(row, col)
+
+fun Array<IntArray>.checkIfVisibleRight(row: Int, col: Int): Boolean {
+    if (row == 0 || col == 0) return true
+
+    val startingTree = this[row][col]
+    for (i in col + 1 until this[row].size) {
+        val toCompare = this[row][i]
+        if (toCompare >= startingTree) return false
+    }
+
+    return true
+}
+
+fun Array<IntArray>.checkIfVisibleLeft(row: Int, col: Int): Boolean {
+    if (row == 0 || col == 0) return true
+
+    val startingTree = this[row][col]
+    for (i in col - 1 downTo 0) {
+        val toCompare = this[row][i]
+        if (toCompare >= startingTree) return false
+    }
+
+    return true
+}
+
+fun Array<IntArray>.checkIfVisibleDown(row: Int, col: Int): Boolean {
+    if (row == 0 || col == 0) return true
+
+    val startingTree = this[row][col]
+    for (i in row + 1 until size) {
+        val toCompare = this[i][col]
+        if (toCompare >= startingTree) return false
+    }
+
+    return true
+}
+
+fun Array<IntArray>.checkIfVisibleUp(row: Int, col: Int): Boolean {
+    if (row == 0 || col == 0) return true
+
+    val startingTree = this[row][col]
+    for (i in row - 1 downTo 0) {
+        val toCompare = this[i][col]
+        if (toCompare >= startingTree) return false
+    }
+
+    return true
+}
+
+fun List<Int>.toArrayOfIntArrays(rows: Int) = this.chunked(rows).map { it.toIntArray() }.toTypedArray()
