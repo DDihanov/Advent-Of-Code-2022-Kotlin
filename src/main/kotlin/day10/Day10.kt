@@ -21,6 +21,9 @@ private fun String.toCommand(): Command {
 private fun parseInput(input: () -> List<String>) = input().map { it.toCommand() }
 
 fun day101(): Int {
+    //calc signal strength cycle * register value
+    fun Int.signalStrength(registerValue: Int) = this * registerValue
+
     fun List<Int>.sum(cycle: Int, registerValue: Int) = this.contains(cycle).run {
         when (this) {
             true -> cycle.signalStrength(registerValue)
@@ -90,10 +93,6 @@ fun day102() {
         }
     }
 }
-
-
-//calc signal strength cycle * register value
-private fun Int.signalStrength(registerValue: Int) = this * registerValue
 
 fun main() {
     println(day101())
