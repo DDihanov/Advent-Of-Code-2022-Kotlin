@@ -78,7 +78,7 @@ fun day102() {
                 repeat(2) { time ->
                     checkAndDraw(spritePos, crtPos % 40)
                     crtPos++
-                    // time == 1 means this is the second cycle
+                    // time == 1 means this is the second cycle, since it starts from 0
                     if (time == 1) spritePos += command.value
                 }
             }
