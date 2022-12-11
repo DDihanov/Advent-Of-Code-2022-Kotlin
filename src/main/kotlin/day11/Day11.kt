@@ -29,14 +29,14 @@ private data class Test(val divBy: Int, val pass: Int, val fail: Int)
 
 private data class Monkey(
     val index: Int,
-    val itemsWorryLevel: List<Int>,
+    val itemsWorryLevel: List<Long>,
     val op: Op,
     val test: Test,
     val inspections: Int = 0
 )
 
 private fun List<String>.toMonkey(index: Int): Monkey {
-    val items = component2().substringAfter("Starting items:").split(", ").map { it.trim().toInt() }
+    val items = component2().substringAfter("Starting items:").split(", ").map { it.trim().toLong() }
     val op = component3().substringAfter("Operation: new = old ").split(" ").toOp()
     val divBy = component4().substringAfter("Test: divisible by ").toInt()
     val testTrue = component5().substringAfter("If true: throw to monkey ").toInt()
@@ -50,13 +50,13 @@ private fun parseInput(input: () -> String) = input().split("\n\r").mapIndexed {
 }
 
 // returns index of monkey to pass item to based on test result
-private fun Int.performTest(test: Test) = when (this % test.divBy == 0) {
+private fun Long.performTest(test: Test) = when (this % test.divBy == 0L) {
     true -> test.pass
     else -> test.fail
 }
 
-private fun Int.decreaseWorryLevel(divBy: Int) = floorDiv(divBy)
-private fun Int.performOp(operation: Op) = when (operation) {
+private fun Long.decreaseWorryLevel(divBy: Int) = floorDiv(divBy)
+private fun Long.performOp(operation: Op) = when (operation) {
     is Op.Add -> when (operation.amount) {
         is AmountToCalc.ByNumber -> this + operation.amount.number
         AmountToCalc.ByOld -> this + this
@@ -68,8 +68,8 @@ private fun Int.performOp(operation: Op) = when (operation) {
     }
 }
 
-private fun monkeyBusiness(roundCount: Int, divideStressBy: Int): Int {
-    val monkeys = parseInput { input }.toMutableList()
+private fun monkeyBusiness(input: () -> List<Monkey>, roundCount: Int, relieveStress: Long.() -> Long): List<Monkey> {
+    val monkeys = input().toMutableList()
 
     repeat(roundCount) {
         repeat(monkeys.count()) { monkeyIndex ->
@@ -78,7 +78,7 @@ private fun monkeyBusiness(roundCount: Int, divideStressBy: Int): Int {
                 val currMonkey = monkeys[monkeyIndex]
                 val item = currentItemIterator.next()
                 val newItem = item.performOp(currMonkey.op)
-                    .decreaseWorryLevel(divideStressBy)
+                    .relieveStress()
                 val passTo = newItem.performTest(currMonkey.test)
                 val passToMonkey = monkeys[passTo]
                 val newPassToMonkey = passToMonkey.copy(itemsWorryLevel = passToMonkey.itemsWorryLevel + newItem)
@@ -97,16 +97,27 @@ private fun monkeyBusiness(roundCount: Int, divideStressBy: Int): Int {
         }
     }
 
-    return monkeys.sortedByDescending { it.inspections }.take(2)
-        .map { it.inspections }.reduce { acc, i -> acc * i }
+    return monkeys
 }
 
-private fun day111(): Int = monkeyBusiness(20, 3)
+private fun day111() =
+    monkeyBusiness(input = { parseInput { input }.toMutableList() }, roundCount = 20, relieveStress = {
+        decreaseWorryLevel(3)
+    }).sortedByDescending { it.inspections }.take(2)
+        .map { it.inspections }.reduce { acc, i -> acc * i }
 
-private fun day112(): Int = monkeyBusiness(1000, 1)
+private fun day112(): Long {
+    val input = parseInput { input }.toMutableList()
+    val base = input.fold(1L) { acc, monkey -> acc * monkey.test.divBy }
+    return monkeyBusiness(input = { input }, roundCount = 10000, relieveStress = {
+        mod(base)
+    }).asSequence().sortedByDescending { it.inspections }
+        .take(2)
+        .map { it.inspections }.map { it.toLong() }.reduce { acc, i -> acc * i }
+}
 
 
 fun main() {
     println(day111())
-    println(day111())
+    println(day112())
 }
