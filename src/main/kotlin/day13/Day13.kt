@@ -18,8 +18,8 @@ sealed class Data {
 
 data class Compare(val first: Data, val second: Data)
 
-fun String.parseList(): List<Data> = this.split(",", limit = 2).fold(listOf()) { acc: List<Data>, s: String ->
-    acc + s.parseList()
+fun String.parseList() = this.split(",", limit = 2).fold(listOf()) { acc: List<Data>, s: String ->
+    acc + s.parseElement()
 }
 
 fun String.parseElement(): Data = when {
