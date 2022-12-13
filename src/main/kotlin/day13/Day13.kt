@@ -1,7 +1,6 @@
 package day13
 
 import java.io.File
-import kotlin.math.abs
 
 val input = File("src/main/kotlin/day13/Day13.txt").readLines().mapNotNull {
     when (it) {
@@ -18,22 +17,54 @@ sealed class Data {
 
 data class Compare(val first: Data, val second: Data)
 
-fun String.parseList() = this.split(",", limit = 2).fold(listOf()) { acc: List<Data>, s: String ->
-    acc + s.parseElement()
+fun String.findClosingBracketFromPos(openBracketPos: Int): Int {
+    var closedBracketPos = openBracketPos
+    var counter = 1
+    while (counter > 0) {
+        when (this[++closedBracketPos]) {
+            ']' -> counter--
+            '[' -> counter++
+        }
+    }
+    return closedBracketPos
 }
 
-fun String.parseElement(): Data = when {
-    this.toIntOrNull() != null -> Data.Integer(this.toInt())
-    this == "" -> Data.ListData(listOf())
-    else -> Data.ListData(
-        this.substringAfter("[")
-            .substringBefore("]")
-            .parseList()
-    )
+fun String.parseLine(): Data {
+    if (isEmpty()) return Data.ListData(listOf())
+
+    val list = mutableListOf<Data>()
+
+    var index = 0
+    while (index < count()) {
+        when (val char = this[index]) {
+            '[' -> {
+                val closedPos = this.findClosingBracketFromPos(index)
+                val sub = substring(startIndex = index + 1, endIndex = closedPos)
+                list.add(sub.parseLine())
+                index = closedPos + 1
+            }
+
+            ',' -> {
+                index++
+            }
+
+            else -> {
+                list.add(Data.Integer(char.digitToInt()))
+                index++
+            }
+        }
+
+    }
+
+    return Data.ListData(list)
 }
 
+fun String.unwrapList() = removeSurrounding("[", "]")
 fun parseInput(input: () -> List<String>): List<Compare> = input().chunked(2).map {
-    Compare(it.component1().parseElement(), it.component2().parseElement())
+    Compare(
+        it.component1().unwrapList().parseLine(),
+        it.component2().unwrapList().parseLine()
+    )
 }
 
 sealed class Result {
