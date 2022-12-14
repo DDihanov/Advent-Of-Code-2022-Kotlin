@@ -1,5 +1,3 @@
-package day13
-
 import java.io.File
 
 val input = File("src/main/kotlin/day13/Day13.txt").readLines().mapNotNull {
@@ -9,62 +7,138 @@ val input = File("src/main/kotlin/day13/Day13.txt").readLines().mapNotNull {
     }
 }
 
-private val packets = input.filter { it.isNotBlank() }.map { Packet.of(it) }
+sealed class Data {
+    data class Integer(val value: Int) : Data()
 
-fun day131(): Int =
-    packets.chunked(2).mapIndexed { index, pair ->
-        if (pair.first() < pair.last()) index + 1 else 0
-    }.sum()
-
-fun day132(): Int {
-    val dividerPacket1 = Packet.of("[[2]]")
-    val dividerPacket2 = Packet.of("[[6]]")
-    val ordered = (packets + dividerPacket1 + dividerPacket2).sorted()
-    return (ordered.indexOf(dividerPacket1) + 1) * (ordered.indexOf(dividerPacket2) + 1)
+    data class ListData(val data: List<Data> = listOf()) : Data()
 }
 
-private sealed class Packet : Comparable<Packet> {
-    companion object {
-        fun of(input: String): Packet =
-            of(
-                input.split("""((?<=[\[\],])|(?=[\[\],]))""".toRegex())
-                    .filter { it.isNotBlank() }
-                    .filter { it != "," }
-                    .iterator()
-            )
+data class Compare(val first: Data, val second: Data)
 
-        private fun of(input: Iterator<String>): Packet {
-            val packets = mutableListOf<Packet>()
-            while (input.hasNext()) {
-                when (val symbol = input.next()) {
-                    "]" -> return ListPacket(packets)
-                    "[" -> packets.add(of(input))
-                    else -> packets.add(IntPacket(symbol.toInt()))
-                }
-            }
-            return ListPacket(packets)
+fun String.findClosingBracketFromPos(openBracketPos: Int): Int {
+    var closedBracketPos = openBracketPos
+    var counter = 1
+    while (counter > 0) {
+        when (this[++closedBracketPos]) {
+            ']' -> counter--
+            '[' -> counter++
         }
+    }
+    return closedBracketPos
+}
+
+fun String.parseLine(): Data {
+    if (isEmpty()) return Data.ListData(listOf())
+
+    val list = mutableListOf<Data>()
+
+    var index = 0
+
+    while (index < count()) {
+        when (val char = this[index]) {
+            '[' -> {
+                val closedPos = this.findClosingBracketFromPos(index)
+                val sub = substring(startIndex = index + 1, endIndex = closedPos)
+                list.add(sub.parseLine())
+                index = closedPos
+            }
+
+            ',' -> {}
+            else -> {
+                var digitToParse = ""
+                var curr = char
+                while (curr.isDigit()) {
+                    digitToParse += curr
+                    index++
+                    if (index == count()) {
+                        break
+                    }
+                    curr = this[index]
+                    continue
+                }
+                list.add(Data.Integer(digitToParse.toInt()))
+            }
+        }
+        index++
+    }
+
+    return Data.ListData(list)
+}
+
+fun parseInput(input: () -> List<String>): List<Compare> = input().chunked(2).map {
+    Compare(
+        it.component1().parseLine(),
+        it.component2().parseLine()
+    )
+}
+
+fun parseInput2(input: () -> List<String>): List<Data> = input().map { it.parseLine() }
+
+
+sealed class Result {
+    object CorrectOrder : Result()
+    object IncorrectOrder : Result()
+    object Tie : Result()
+}
+
+fun Data.Integer.compare(other: Data.Integer) = when {
+    this.value < other.value -> Result.CorrectOrder
+    this.value > other.value -> Result.IncorrectOrder
+    else -> Result.Tie
+}
+
+fun Data.compare(second: Data): Result = when {
+    this is Data.Integer && second is Data.Integer -> this.compare(second)
+    this is Data.ListData && second is Data.ListData -> this.compare(second)
+    this is Data.ListData && second is Data.Integer -> this.compare(Data.ListData(listOf(second)))
+    this is Data.Integer && second is Data.ListData -> Data.ListData(listOf(this)).compare(second)
+    else -> error("No such comparison scenario")
+}
+
+fun Result.toInt() = when (this) {
+    is Result.CorrectOrder -> 1
+    is Result.IncorrectOrder -> -1
+    else -> 0
+}
+
+fun Data.ListData.compare(other: Data.ListData): Result {
+    val firstIterator = this.data.iterator()
+    val secondIterator = other.data.iterator()
+
+    while (firstIterator.hasNext() && secondIterator.hasNext()) {
+        val firstNext = firstIterator.next()
+        val secondNext = secondIterator.next()
+        when (val result = Compare(firstNext, secondNext).eval()) {
+            Result.Tie -> continue
+            else -> return result
+        }
+    }
+
+    // in case one ran out of items first we need to check which one it was
+    return when {
+        firstIterator.hasNext() && !secondIterator.hasNext() -> Result.IncorrectOrder
+        secondIterator.hasNext() && !firstIterator.hasNext() -> Result.CorrectOrder
+        else -> Result.Tie
     }
 }
 
-private class IntPacket(val amount: Int) : Packet() {
-    fun asList(): Packet = ListPacket(listOf(this))
+fun Compare.eval(): Result = first.compare(second)
 
-    override fun compareTo(other: Packet): Int =
-        when (other) {
-            is IntPacket -> amount.compareTo(other.amount)
-            is ListPacket -> asList().compareTo(other)
+fun day131() = parseInput { input }
+    .mapIndexed { index, pair ->
+        when (pair.eval()) {
+            Result.CorrectOrder -> index + 1
+            else -> 0
         }
-}
+    }.sum()
 
-private class ListPacket(val subPackets: List<Packet>) : Packet() {
-    override fun compareTo(other: Packet): Int =
-        when (other) {
-            is IntPacket -> compareTo(other.asList())
-            is ListPacket -> subPackets.zip(other.subPackets)
-                .map { it.first.compareTo(it.second) }
-                .firstOrNull { it != 0 } ?: subPackets.size.compareTo(other.subPackets.size)
-        }
+fun day132() = parseInput2 { input + "[[6]]" + "[[2]]" }.sortedWith { o1, o2 ->
+    o2.compare(o1).toInt()
+}.foldIndexed(1) { index, acc, data ->
+    when (data == "[[6]]".parseLine() || data == "[[2]]".parseLine()) {
+        false -> acc
+        true -> (index + 1) * acc
+    }
 }
 
 fun main() {
