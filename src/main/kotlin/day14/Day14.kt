@@ -1,7 +1,6 @@
 package day14
 
 import java.io.File
-import kotlin.math.max
 
 val input = File("src/main/kotlin/day14/Day14.txt").readLines().map { it.split(" -> ") }
     .map { inner ->
@@ -55,40 +54,96 @@ val directions = listOf(
 
 operator fun Coordinates.plus(other: Coordinates) = Coordinates(this.x + other.x, this.y + other.y)
 
+fun Coordinates.lowerThan(other: Coordinates) = when (this.isLowerThan(other)) {
+    true -> this
+    false -> other
+}
+
+fun Coordinates.isLowerThan(other: Coordinates) = this.y > other.y
+
 // attempt to move to any direction
 // if all the coordinates are taken, then return this position
-fun Coordinates.move(rocks: Set<Coordinates>, sand: List<Coordinates>): Coordinates {
+fun Coordinates.moveWithFallThroughCheck(
+    lowestPoint: Coordinates,
+    isValidMove: Coordinates.() -> Boolean
+): Coordinates {
     var newPos = this
-    val lowestRock = rocks.maxByOrNull { it.y }!!
-    val lowestSandFlake = sand.maxByOrNull { it.y } ?: lowestRock
-    val lowestPoint = max(lowestRock.y, lowestSandFlake.y)
     while (true) {
         val toMove = directions.map {
             newPos + it
-        }.firstOrNull { !rocks.contains(it) && !sand.contains(it) }
+        }.firstOrNull { it.isValidMove() }
         when {
             toMove == null -> break
             // if sand flake "falls through" then return the original starting one
-            toMove.y >= lowestPoint -> return this
+            toMove.isLowerThan(lowestPoint) -> return this
             else -> newPos = toMove
         }
     }
     return newPos
 }
 
+// attempt to move to any direction
+// if all the coordinates are taken, then return this position
+fun Coordinates.moveWithoutFallThrough(
+    isValidMove: Coordinates.() -> Boolean
+): Coordinates {
+    var newPos = this
+    while (true) {
+        val toMove = directions.map {
+            newPos + it
+        }.firstOrNull { it.isValidMove() }
+        when (toMove) {
+            null -> break
+            else -> newPos = toMove
+        }
+    }
+    return newPos
+}
+
+
 fun day141(): Int {
     val rocks = input.parseInput()
     val sandCoordinates = mutableListOf<Coordinates>()
     val start = Coordinates(500, 0)
-    var sandFlake = start.move(rocks, sandCoordinates)
+
+    val lowestRock = rocks.maxByOrNull { it.y }!!
+    val lowestSandFlake = sandCoordinates.maxByOrNull { it.y } ?: lowestRock
+    val lowestPoint = lowestRock.lowerThan(lowestSandFlake)
+
+    var sandFlake = start.moveWithFallThroughCheck(lowestPoint) {
+        !rocks.contains(this) && !sandCoordinates.contains(this)
+    }
     while (start != sandFlake) {
         sandCoordinates.add(sandFlake)
-        sandFlake = start.move(rocks, sandCoordinates)
+        sandFlake = start.moveWithFallThroughCheck(lowestPoint) {
+            !rocks.contains(this) && !sandCoordinates.contains(this)
+        }
     }
 
     return sandCoordinates.count()
 }
 
+fun day142(): Int {
+    val rocks = input.parseInput()
+    val floorY = rocks.maxByOrNull { coordinates -> coordinates.y }!!.y + 2
+    // hash map for speed
+    val sandCoordinates = mutableMapOf<Coordinates, Boolean>()
+    val start = Coordinates(500, 0)
+
+    var sandFlake = start.moveWithoutFallThrough {
+        !rocks.contains(this) && !sandCoordinates.contains(this) && this.y < floorY
+    }
+    while (start != sandFlake) {
+        sandCoordinates[sandFlake] = true
+        sandFlake = start.moveWithoutFallThrough {
+            !rocks.contains(this) && !sandCoordinates.contains(this) && this.y < floorY
+        }
+    }
+
+    return sandCoordinates.count() + 1
+}
+
 fun main() {
     println(day141())
+    println(day142())
 }
