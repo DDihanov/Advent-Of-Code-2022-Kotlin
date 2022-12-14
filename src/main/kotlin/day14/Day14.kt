@@ -110,17 +110,16 @@ fun day141(): Int {
     val lowestSandFlake = sandCoordinates.maxByOrNull { it.y } ?: lowestRock
     val lowestPoint = lowestRock.lowerThan(lowestSandFlake)
 
-    var sandFlake = start.moveWithFallThroughCheck(lowestPoint) {
-        !rocks.contains(this) && !sandCoordinates.contains(this)
-    }
-    while (start != sandFlake) {
+    var sandFlake = start
+
+    do {
         sandCoordinates.add(sandFlake)
         sandFlake = start.moveWithFallThroughCheck(lowestPoint) {
             !rocks.contains(this) && !sandCoordinates.contains(this)
         }
-    }
+    } while (start != sandFlake)
 
-    return sandCoordinates.count()
+    return sandCoordinates.count() - 1
 }
 
 fun day142(): Int {
@@ -130,17 +129,15 @@ fun day142(): Int {
     val sandCoordinates = mutableMapOf<Coordinates, Boolean>()
     val start = Coordinates(500, 0)
 
-    var sandFlake = start.moveWithoutFallThrough {
-        !rocks.contains(this) && !sandCoordinates.contains(this) && this.y < floorY
-    }
-    while (start != sandFlake) {
+    var sandFlake = start
+    do {
         sandCoordinates[sandFlake] = true
         sandFlake = start.moveWithoutFallThrough {
             !rocks.contains(this) && !sandCoordinates.contains(this) && this.y < floorY
         }
-    }
+    } while (start != sandFlake)
 
-    return sandCoordinates.count() + 1
+    return sandCoordinates.count()
 }
 
 fun main() {
