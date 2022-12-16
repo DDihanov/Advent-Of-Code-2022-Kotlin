@@ -15,6 +15,7 @@ data class Beacon(val coordinates: Coordinates)
 fun Coordinates.manhattanDistance(other: Coordinates) =
     abs(x - other.x) + abs(y - other.y)
 
+//also the radius of a "diamond"
 fun String.extractCoordinates() =
     "(-?\\d+)".toRegex().findAll(this).map { it.groupValues[1] }.map { it.toInt() }.toList()
 
@@ -62,34 +63,40 @@ fun day152() {
     val multiply = 4_000_000
     val maxXY = 4_000_000
 
-    // took about 40 minutes for this to work so be wary :D
     for (sensor in sensors) {
-        Thread {
-            val leftX = sensor.coordinates.x - sensor.radius - 1
-            val rightX = sensor.coordinates.x + sensor.radius + 1
-            val topY = sensor.coordinates.y - sensor.radius - 1
-            val bottomY = sensor.coordinates.y + sensor.radius + 1
-            for (y in topY..bottomY) {
-                for (x in leftX..rightX) {
-                    if (x < 0 || x > maxXY || y < 0 || y > maxXY) {
-                        continue
-                    }
-                    val outsideCoord = Coordinates(x = x, y = y)
-                    when {
-                        sensors.none {
-                            it.radius >= it.coordinates.manhattanDistance(outsideCoord)
-                        } -> {
-                            println(outsideCoord.run {
-                                (this.x.toBigInteger() * multiply.toBigInteger()) + this.y.toBigInteger()
-                            })
-                            return@Thread
-                        }
-
-                        else -> continue
-                    }
-                }
+        // start at the top
+        // calculate leftmost and rightmost X points and check those
+        // traversing down to the end of the radius
+        // take the point just outside the perimeter edge
+        val topY = sensor.coordinates.y - sensor.radius - 1
+        val bottomY = sensor.coordinates.y + sensor.radius + 1
+        for (y in topY..bottomY) {
+            val distanceToCenter = abs(sensor.coordinates.y - y)
+            val leftX = sensor.coordinates.x - sensor.radius - 1 + distanceToCenter
+            val rightX = sensor.coordinates.x + sensor.radius + 1 - distanceToCenter
+            val leftPoint = Coordinates(x = leftX, y = y)
+            val rightPoint = Coordinates(x = rightX, y = y)
+            if (leftX < 0 || leftX > maxXY || rightX < 0 || rightX > maxXY) {
+                continue
             }
-        }.start()
+            if (y < 0 || y > maxXY) {
+                continue
+            }
+            if (sensors.none {
+                    it.radius >= it.coordinates.manhattanDistance(leftPoint)
+                }) {
+                println(leftPoint)
+                println((leftPoint.x.toBigInteger() * multiply.toBigInteger()) + leftPoint.y.toBigInteger())
+                return
+            }
+            if (sensors.none {
+                    it.radius >= it.coordinates.manhattanDistance(rightPoint)
+                }) {
+                println(rightPoint)
+                println((rightPoint.x.toBigInteger() * multiply.toBigInteger()) + rightPoint.y.toBigInteger())
+                return
+            }
+        }
     }
 }
 
