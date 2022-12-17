@@ -20,84 +20,74 @@ fun parseInput(input: () -> List<String>) = input().associate { line ->
 }
 
 const val MAX_TIME = 30
-fun day161() {
-    val allTunnels = parseInput { input }
 
-    // exclude zero flow tunnels
-    val targetTunnels = allTunnels.values.filter { it.flowRate > 0 }
+data class State(val currentLocation: Tunnel, val valves: List<Tunnel>, val time: Int)
+
+fun day161(): Int {
+    val allTunnels = parseInput { input }
 
     val start = allTunnels["AA"]!!
 
-    val findBest = targetTunnels.maxOf { target ->
-        dfs(
-            start,
-            target,
-            0,
-            0,
-            targetTunnels - target,
-            listOf(),
-            listOf(start),
-            allTunnels
-        )
-    }
+    // state and score for given state
+    val dp = mutableMapOf<State, Int>()
 
-    println(findBest)
+    return dfsWithMemoization(
+        start,
+        0,
+        0,
+        listOf(),
+        allTunnels,
+        dp
+    )
 }
 
-fun dfs(
+fun dfsWithMemoization(
     current: Tunnel,
-    target: Tunnel,
     currentTime: Int,
     accumulatedPressure: Int,
-    targets: List<Tunnel>,
     openValves: List<Tunnel>,
-    visited: List<Tunnel>,
-    allTunnels: Map<String, Tunnel>
+    allTunnels: Map<String, Tunnel>,
+    states: MutableMap<State, Int>
 ): Int {
-    if (currentTime > MAX_TIME) {
+    if (currentTime == MAX_TIME) {
         return accumulatedPressure
     }
 
-    return when (current) {
-        target -> {
-            when {
-                targets.isEmpty() -> accumulatedPressure + (MAX_TIME - currentTime) * openValves.sumOf { it.flowRate }
-                else -> targets.maxOf { newTarget ->
-                    dfs(
-                        current,
-                        newTarget,
-                        currentTime + 1,
-                        accumulatedPressure + openValves.sumOf { it.flowRate },
-                        targets - newTarget,
-                        openValves + current,
-                        listOf(current),
-                        allTunnels
-                    )
-                }
-            }
-        }
+    val key = State(current, openValves, currentTime)
 
-        else -> {
-            current.leadsTo.maxOf { child: String ->
-                val childFromMap = allTunnels[child]!!
-                when {
-                    visited.contains(childFromMap) -> 0
-                    else -> dfs(
-                        childFromMap,
-                        target,
-                        currentTime + 1,
-                        accumulatedPressure + openValves.sumOf { it.flowRate },
-                        targets,
-                        openValves,
-                        visited + childFromMap,
-                        allTunnels
-                    )
-                }
-            }
+    when (val state = states[key]) {
+        null -> {}
+        else -> return state
+    }
+
+    val newBest = when {
+        current.flowRate > 0 && !openValves.contains(current) -> dfsWithMemoization(
+            current,
+            currentTime + 1,
+            accumulatedPressure + openValves.sumOf { it.flowRate },
+            openValves + current,
+            allTunnels,
+            states
+        )
+
+        else -> current.leadsTo.maxOf { child: String ->
+            val childFromMap = allTunnels[child]!!
+            dfsWithMemoization(
+                childFromMap,
+                currentTime + 1,
+                accumulatedPressure + openValves.sumOf { it.flowRate },
+                openValves,
+                allTunnels,
+                states
+            )
         }
     }
+
+    states[key] = newBest
+
+    return newBest
 }
 
 fun main() {
-    day161()
+    println(day161())
 }
